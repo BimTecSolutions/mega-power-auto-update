@@ -1,0 +1,44 @@
+name: Mega Power Sync
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub does not guarantee exact timing —
+    # scheduled runs can be delayed a few minutes when GitHub's
+    # infrastructure is under heavy load.
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+
+# Prevents two runs from overlapping if one run takes longer
+# than 5 minutes (e.g. Selenium fallback kicks in).
+concurrency:
+  group: mega-power-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write Firebase service account key
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > serviceAccountKey.json
+
+      - name: Run sync script
+        run: python mega_power_sync.py
+
+      - name: Remove service account key
+        if: always()
+        run: rm -f serviceAccountKey.json
