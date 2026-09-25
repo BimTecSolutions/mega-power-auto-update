@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 import time
 import sys
+from datetime import datetime
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -505,6 +506,45 @@ class MegaPowerScraper:
                 return match.group(1)
 
         return None
+        
+    # ========================================================
+    # CONVERT DATE TO ISO FORMAT
+    # ========================================================
+
+    def convert_date_to_iso(self, date_text):
+
+        if not date_text:
+            return None
+
+        date_formats = [
+            "%B %d, %Y",
+            "%B %d %Y",
+            "%b %d, %Y",
+            "%b %d %Y",
+        ]
+
+        for date_format in date_formats:
+
+            try:
+
+                parsed_date = datetime.strptime(
+                    date_text.strip(),
+                    date_format
+                )
+
+                return parsed_date.strftime(
+                    "%Y-%m-%d"
+                )
+
+            except ValueError:
+                continue
+
+        print(
+            f"⚠️ Could not convert date to ISO: "
+            f"{date_text}"
+        )
+
+        return None
 
     # ========================================================
     # PARSE RESULT
@@ -540,6 +580,12 @@ class MegaPowerScraper:
             text
         )
 
+     
+        # Convert date to ISO format
+        date_iso = self.convert_date_to_iso(
+            date
+        )
+
         # Extract winning numbers
         extracted = self.extract_winning_numbers(
             text,
@@ -563,6 +609,8 @@ class MegaPowerScraper:
                 ),
 
                 "date": date,
+
+                "date_iso": date_iso,
 
                 "symbol": extracted[
                     "symbol"
@@ -923,6 +971,10 @@ def upload_draw(
 
         "date": draw.get(
             "date"
+        ),
+
+        "date_iso": draw.get(
+            "date_iso"
         ),
 
         "symbol": draw.get(
